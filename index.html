@@ -30,13 +30,22 @@
     <button type="submit" class="btn btn-primary w-100">Submit Attendance</button>
   </form>
 
-  <div id="successMessage" class="alert alert-success mt-3 d-none">Submitted successfully!</div>
-  <div id="qr-reader" class="mt-5"></div>
+  <button id="startScan" class="btn btn-outline-secondary mt-3 w-100">Scan QR</button>
+
+  <div id="successMessage" class="alert alert-success mt-3 d-none">✅ Submitted successfully!</div>
+  <div id="errorMessage" class="alert alert-danger mt-3 d-none">❌ Failed to submit. Please try again.</div>
+
+  <div id="qr-reader" class="mt-4" style="display:none;"></div>
 </div>
 
 <script>
   const form = document.getElementById('attendanceForm');
   const successMsg = document.getElementById('successMessage');
+  const errorMsg = document.getElementById('errorMessage');
+  const qrReaderElem = document.getElementById("qr-reader");
+  const scanBtn = document.getElementById("startScan");
+
+  let qrReader;
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -49,32 +58,57 @@
       type: type
     };
 
-    await fetch("https://script.google.com/macros/s/AKfycbwaEuvLfF8CjYr3Z5yiRU2hSYiKrWoL7RK3Bc15aJFMw-xqrzlAbi9F5REgO0s0EONV/exec", {
-      method: "POST",
-      body: JSON.stringify(payload),
-      headers: {
-        "Content-Type": "application/json"
-      }
-    });
+    try {
+      const response = await fetch("https://script.google.com/macros/s/AKfycbwaEuvLfF8CjYr3Z5yiRU2hSYiKrWoL7RK3Bc15aJFMw-xqrzlAbi9F5REgO0s0EONV/exec", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
 
-    successMsg.classList.remove("d-none");
-    form.reset();
-    setTimeout(() => successMsg.classList.add("d-none"), 3000);
+      if (response.ok) {
+        successMsg.classList.remove("d-none");
+        errorMsg.classList.add("d-none");
+        form.reset();
+      } else {
+        throw new Error("Submission failed");
+      }
+    } catch (error) {
+      errorMsg.classList.remove("d-none");
+      successMsg.classList.add("d-none");
+    }
+
+    setTimeout(() => {
+      successMsg.classList.add("d-none");
+      errorMsg.classList.add("d-none");
+    }, 3000);
   });
 
-  // QR Code Scanner
-  const qrReader = new Html5Qrcode("qr-reader");
-  qrReader.start(
-    { facingMode: "environment" },
-    {
-      fps: 10,
-      qrbox: 250
-    },
-    (decodedText) => {
-      document.getElementById("name").value = decodedText;
-      qrReader.stop();
+  // Start QR Code Scanner
+  scanBtn.addEventListener("click", () => {
+    qrReaderElem.style.display = "block";
+
+    if (!qrReader) {
+      qrReader = new Html5Qrcode("qr-reader");
     }
-  );
+
+    qrReader.start(
+      { facingMode: "environment" },
+      {
+        fps: 10,
+        qrbox: 250
+      },
+      (decodedText) => {
+        document.getElementById("name").value = decodedText;
+        qrReader.stop().then(() => {
+          qrReaderElem.style.display = "none";
+        });
+      }
+    ).catch(err => {
+      console.error("QR Code scan error:", err);
+    });
+  });
 </script>
 
 </body>
