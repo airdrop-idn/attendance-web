@@ -11,7 +11,7 @@
 
 <div class="container py-5">
   <h2 class="text-center mb-4">Employee Attendance</h2>
-  
+
   <form id="attendanceForm">
     <div class="mb-3">
       <label for="name" class="form-label">Employee Name (Scan QR or Input)</label>
@@ -27,22 +27,21 @@
       </select>
     </div>
 
-    <div class="d-grid gap-2 d-md-flex justify-content-md-between mb-3">
-      <button type="button" class="btn btn-secondary" onclick="startQRScanner()">Scan QR</button>
-      <button type="submit" class="btn btn-primary">Submit Attendance</button>
-    </div>
+    <button type="submit" class="btn btn-primary w-100">Submit Attendance</button>
+    <button type="button" class="btn btn-secondary w-100 mt-2" onclick="startScan()">Scan QR</button>
   </form>
 
   <div id="successMessage" class="alert alert-success mt-3 d-none">✅ Submitted successfully!</div>
   <div id="errorMessage" class="alert alert-danger mt-3 d-none">❌ Failed to submit. Please try again.</div>
-  <div id="qr-reader" class="mt-4"></div>
+
+  <div id="qr-reader" class="mt-5"></div>
 </div>
 
 <script>
   const form = document.getElementById('attendanceForm');
   const successMsg = document.getElementById('successMessage');
   const errorMsg = document.getElementById('errorMessage');
-  const qrReaderContainer = document.getElementById("qr-reader");
+  const qrReader = new Html5Qrcode("qr-reader");
 
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
@@ -50,41 +49,38 @@
     const name = document.getElementById('name').value;
     const type = document.getElementById('type').value;
 
-    const payload = {
-      name: name,
-      type: type
-    };
+    const payload = { name, type };
 
     try {
-      const res = await fetch("https://script.google.com/macros/s/AKfycbzEv68o7eX71gEH0QC8xOJBksTfOqpGkvsHLLZ_rGk/dev", {
+      const response = await fetch("https://script.google.com/macros/s/AKfycbwaEuvLfF8CjYr3Z5yiRU2hSYiKrWoL7RK3Bc15aJFMw-xqrzlAbi9F5REgO0s0EONV/exec", {
         method: "POST",
         body: JSON.stringify(payload),
-        headers: {
-          "Content-Type": "application/json"
-        }
+        headers: { "Content-Type": "application/json" }
       });
 
-      if (!res.ok) throw new Error("Failed");
-
-      successMsg.classList.remove("d-none");
-      errorMsg.classList.add("d-none");
-      form.reset();
-      setTimeout(() => successMsg.classList.add("d-none"), 3000);
+      const text = await response.text();
+      if (text.includes("Success")) {
+        successMsg.classList.remove("d-none");
+        errorMsg.classList.add("d-none");
+        form.reset();
+      } else {
+        throw new Error(text);
+      }
     } catch (error) {
-      successMsg.classList.add("d-none");
       errorMsg.classList.remove("d-none");
+      successMsg.classList.add("d-none");
     }
+
+    setTimeout(() => {
+      successMsg.classList.add("d-none");
+      errorMsg.classList.add("d-none");
+    }, 3000);
   });
 
-  let qrReader;
-  function startQRScanner() {
-    qrReader = new Html5Qrcode("qr-reader");
+  function startScan() {
     qrReader.start(
       { facingMode: "environment" },
-      {
-        fps: 10,
-        qrbox: 250
-      },
+      { fps: 10, qrbox: 250 },
       (decodedText) => {
         document.getElementById("name").value = decodedText;
         qrReader.stop();
